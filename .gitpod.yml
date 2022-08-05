@@ -1,0 +1,26 @@
+tasks:
+  - name: "'read' shell"
+    command: |
+      echo "Running 'read'"
+      read -p "Waiting for SIGINT from other shell..." &
+      eval $(gp env -e pid=$!)
+      gp sync-done pid_set
+      fg
+      echo "The rest of the script does not run, but the shell does not crash"
+  - name: "Send SIGINT to 'read' shell"
+    command: |
+      gp sync-await pid_set
+      sleep 1 # Allow a little time for the re-attach
+      eval $(gp env -e)
+      kill -INT $pid
+      echo "Sent a SIGINT to $pid"
+  - name: "Verification of crash"
+    command: |
+      gp sync-await shell_crash
+      echo "The human managed shell crashed upon a Ctrl+C"
+  - name: "Human input Ctrl+C"
+    command: |
+      trap "gp sync-done shell_crash" EXIT
+      read -p "Please Ctrl+C to crash this shell"
+      trap - EXIT
+      echo "This should be unreachable if you Ctrl+C"
